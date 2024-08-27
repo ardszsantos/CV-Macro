@@ -11,4 +11,4 @@ troque o caminho presente nesse trecho
 
 para o caminho da sua imagem desejada. 
 
-### Para rodar o macro apenas execute o arquivo 
+### Para rodar o macro apenas execute o arquivo main.py pelo terminal ou utilize o run_main.bat
