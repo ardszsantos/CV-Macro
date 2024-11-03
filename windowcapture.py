@@ -1,78 +1,24 @@
-import numpy as np
-import win32gui, win32ui, win32con
 import cv2
+import numpy as np
+import win32gui
+import mss
 
-class WindowCapture:
+def get_window_position(window_title):
+    window_handle = win32gui.FindWindow(None, window_title)
+    if window_handle == 0:
+        raise ValueError("Window not found.")
+    left, top, right, bottom = win32gui.GetWindowRect(window_handle)
+    width = right - left
+    height = bottom - top
+    return left, top, width, height
 
-    # constructor
-    def __init__(self, window_name=None):
-        # Set properties
-        self.hwnd = None
-        self.window_name = window_name
-        self.w = 0
-        self.h = 0
-        self.cropped_x = 0
-        self.cropped_y = 0
-        self.offset_x = 0
-        self.offset_y = 0
+def capture_screen_region(left, top, width, height):
+    with mss.mss() as sct:
+        monitor = {"left": left, "top": top, "width": width, "height": height}
+        screenshot = sct.grab(monitor)
+        img = np.array(screenshot)
+        return cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
 
-        # Find the window if a name is given, else default to full screen
-        if window_name:
-            self.hwnd = win32gui.FindWindow(None, window_name)
-            if not self.hwnd:
-                raise Exception(f'Window not found: {window_name}')
-
-            # Get window size and position
-            window_rect = win32gui.GetWindowRect(self.hwnd)
-            self.w = window_rect[2] - window_rect[0]
-            self.h = window_rect[3] - window_rect[1]
-
-            # Account for window borders
-            border_pixels = 8
-            titlebar_pixels = 30
-            self.w -= (border_pixels * 2)
-            self.h -= titlebar_pixels + border_pixels
-            self.cropped_x = border_pixels
-            self.cropped_y = titlebar_pixels
-
-            # Calculate offsets to translate coordinates
-            self.offset_x = window_rect[0] + self.cropped_x
-            self.offset_y = window_rect[1] + self.cropped_y
-        else:
-            # Capture the entire screen if no window name provided
-            screen_rect = win32gui.GetWindowRect(win32gui.GetDesktopWindow())
-            self.w = screen_rect[2] - screen_rect[0]
-            self.h = screen_rect[3] - screen_rect[1]
-
-    def get_screenshot(self):
-        # Capture full screen
-        wDC = win32gui.GetWindowDC(win32gui.GetDesktopWindow())
-        dcObj = win32ui.CreateDCFromHandle(wDC)
-        cDC = dcObj.CreateCompatibleDC()
-        dataBitMap = win32ui.CreateBitmap()
-        dataBitMap.CreateCompatibleBitmap(dcObj, self.w, self.h)
-        cDC.SelectObject(dataBitMap)
-
-        # Capture the screen image
-        cDC.BitBlt((0, 0), (self.w, self.h), dcObj, (0, 0), win32con.SRCCOPY)
-
-        # Convert to numpy array
-        signedIntsArray = dataBitMap.GetBitmapBits(True)
-        img = np.frombuffer(signedIntsArray, dtype='uint8')
-        img.shape = (self.h, self.w, 4)
-
-        # Free resources
-        dcObj.DeleteDC()
-        cDC.DeleteDC()
-        win32gui.ReleaseDC(self.hwnd, wDC)
-        win32gui.DeleteObject(dataBitMap.GetHandle())
-
-        # Convert to BGR and drop the alpha channel
-        img = img[..., :3]
-        img = np.ascontiguousarray(img)
-
-        # Crop to the window if a specific window was selected
-        if self.window_name:
-            img = img[self.offset_y:self.offset_y + self.h, self.offset_x:self.offset_x + self.w]
-
-        return img
+def get_frame(window_title):
+    left, top, width, height = get_window_position(window_title)
+    return capture_screen_region(left, top, width, height)
