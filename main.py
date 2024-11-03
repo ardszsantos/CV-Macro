@@ -33,17 +33,21 @@ while True:
     # get an updated image of the game
     screenshot = wincap.get_screenshot()
 
+    # Check if the screenshot is valid
+    if screenshot is None or screenshot.size == 0:
+        print("Failed to capture screenshot.")
+        break  # Exit the loop if the screenshot is invalid
+
     # display the processed image
     points = vision_limestone.find(screenshot, 0.8, 'rectangles')
 
+    # Update the last_rectangle_time if points were found
     if points:
-    # Update the last_rectangle_time with the current time
         last_rectangle_time = time()
 
     # debug the loop rate
     print('FPS {}'.format(1 / (time() - loop_time)))
     loop_time = time()
-
     # Check if more than 2 minutes have passed since the last rectangle was found
     elapsed_time = time() - last_rectangle_time
     if elapsed_time > 40:
